@@ -78,23 +78,38 @@
 </div>
 </section>
 <script>
-function sendProjectBrief(event) {
+async function sendProjectBrief(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const fields = new FormData(form);
-  const subject = encodeURIComponent('Solicitud de proyecto web');
-  const message = encodeURIComponent([
-    `Nombre: ${fields.get('name')}`,
-    `Correo: ${fields.get('email')}`,
-    `Teléfono: ${fields.get('phone') || 'No indicado'}`,
-    `Proyecto: ${fields.get('projectType')}`,
-    '',
-    `Detalles: ${fields.get('message')}`
-  ].join('\n'));
+  const submitButton = form.querySelector('button[type="submit"]');
   const success = document.getElementById('formSuccess');
-  success.classList.remove('hidden');
-  success.querySelector('span:last-child').textContent = 'Se abrirá tu aplicación de correo para completar el envío.';
-  window.location.href = `mailto:proyectos.gyrweb@gmail.com?subject=${subject}&body=${message}`;
+  const error = document.getElementById('formError');
+  success.classList.add('hidden');
+  error.classList.add('hidden');
+  submitButton.disabled = true;
+  submitButton.textContent = 'Enviando solicitud...';
+
+  try {
+    const response = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(form)))
+    });
+    const result = await response.json();
+
+    if (!response.ok) throw new Error(result.error || 'No se pudo enviar el mensaje.');
+
+    form.reset();
+    success.classList.remove('hidden');
+    success.querySelector('span:last-child').textContent = 'Solicitud enviada por Gmail. Te responderemos pronto.';
+  } catch (sendError) {
+    error.classList.remove('hidden');
+    error.querySelector('span:last-child').textContent = sendError.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Enviar Mensaje y Solicitar Cotización';
+  }
+
   return false;
 }
 
@@ -453,7 +468,11 @@ mobileMenu.addEventListener('click', (event) => {
 <!-- Inline Success Alert -->
 <div class="hidden mt-3 p-space-md rounded-xl bg-emerald-500/20 text-emerald-300 font-label-md text-label-md flex items-center gap-3" id="formSuccess">
 <span class="material-symbols-outlined text-[20px]">check_circle</span>
-<span class="">Se abrirá tu aplicación de correo para completar el envío.</span>
+<span class="">Solicitud enviada por Gmail. Te responderemos pronto.</span>
+</div>
+<div class="hidden mt-3 p-space-md rounded-xl bg-error-container/30 text-error font-label-md text-label-md flex items-center gap-3" id="formError" role="alert">
+<span class="material-symbols-outlined text-[20px]">error</span>
+<span class="">No se pudo enviar el mensaje. Inténtalo de nuevo.</span>
 </div>
 </form>
 </div>
